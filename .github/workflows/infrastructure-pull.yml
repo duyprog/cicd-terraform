@@ -15,7 +15,7 @@ jobs:
     defaults:
       run: 
         working-directory: infrastructure
-    runs-on: unbuntu-latest
+    runs-on: ubuntu-latest
     steps: 
       # checkout repository
     - uses: actions/checkout@v4
