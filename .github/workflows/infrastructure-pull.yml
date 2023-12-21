@@ -1,0 +1,79 @@
+name: infrastructure_pull
+permissions: 
+  id-token: write
+  contents: read 
+on: 
+  pull_request: 
+    branches: 
+    - master 
+    paths: 
+    - infrastructure/**
+env: 
+  AWS_REGION: ap-southeast-1
+jobs: 
+  terraform_plan: 
+    defaults:
+      run: 
+        working-directory: infrastructure
+    runs-on: unbuntu-latest
+    steps: 
+      # checkout repository
+    - uses: actions/checkout@v4
+    - name: Config AWS Credentials 
+      uses: aws-actions/configure-aws-credentials@v3
+      with: 
+        role-to-assume: arn:aws:iam::099608707772:role/oidc-ga-Role-ii6EUkVVzokD
+        role-session-name: terraform
+        aws-region: ${{ env.AWS_REGION }}
+    - name: Install Terraform 
+      run: |
+        wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+        echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+        sudo apt update -y && sudo apt install terraform -y    
+    - name: Install tflint 
+      run: |
+        curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+    - name: Verify Terraform version 
+      run: terraform --version 
+    - name: Terraform Format 
+      run: terraform fmt -check
+      id: fmt 
+      continue-on-error: true
+    - name: Terraform lint
+      id: lint 
+      run: tflint
+      continue-on-error: true      
+    - name: Terraform Init 
+      run: terraform init -input=false 
+      id: init
+      continue-on-error: true
+    - name: Terraform plan 
+      id: plan 
+      run: |
+          plan=$(terraform plan -no-color)
+          echo $plan
+          plan="${plan//'%'/'%25'}"
+          plan="${plan//$'\n'/'%0A'}"
+          plan="${plan//$'\r'/'%0D'}"
+          echo "::set-output name=terraform-plan::$plan"
+      continue-on-error: true
+    - name: Update Pull Request
+      uses: actions/github-script@0.9.0
+      env:
+          PLAN: "\n```\nterraform\n${{ steps.plan.outputs.terraform-plan }}\n```\n"
+      with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `### MSK Cluster Terraform
+            #### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+            #### Terraform Linting 🔧\`${{ steps.lint.outcome }}\`
+            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+            <details><summary>Show Plan</summary>
+            ${process.env.PLAN}
+            </details>
+    - name: Terraform Status
+      if: steps.fmt.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.init.outcome == 'failure' || steps.plan.outcome == 'failure'
+      run: exit 1
+                      
+      
