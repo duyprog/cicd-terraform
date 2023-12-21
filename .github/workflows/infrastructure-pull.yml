@@ -58,7 +58,7 @@ jobs:
           echo "::set-output name=terraform-plan::$plan"
       continue-on-error: true
     - name: Update Pull Request
-      uses: actions/github-script@0.9.0
+      uses: actions/github-script@0.9.0 
       env:
           PLAN: "\n```\nterraform\n${{ steps.plan.outputs.terraform-plan }}\n```\n"
       with:
