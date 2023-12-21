@@ -1,7 +1,7 @@
 terraform {
   backend "s3" {
     bucket = "terraform-state-duypk"
-    key = "prod/terraform.tfstate"
+    key    = "prod/terraform.tfstate"
     region = "ap-southeast-1"
   }
   # backend "http" {
