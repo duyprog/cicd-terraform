@@ -147,7 +147,7 @@ resource "aws_instance" "ubuntu_server" {
   }
   tags = {
     Name = "Ubuntu EC2 Server"
-    Env = "Dev"
+    Env  = "Dev"
   }
   provisioner "local-exec" {
     command = "chmod 600 ${local_file.private_key_pem.filename}"
