@@ -1,7 +1,9 @@
-name: infrastructure_pull
+name: infrastructure-pull
 permissions: 
   id-token: write
-  contents: read 
+  contents: read
+  issues: write
+  pull-requests: write
 on: 
   pull_request: 
     branches: 
@@ -15,7 +17,7 @@ jobs:
     defaults:
       run: 
         working-directory: infrastructure
-    runs-on: unbuntu-latest
+    runs-on: ubuntu-latest
     steps: 
       # checkout repository
     - uses: actions/checkout@v4
@@ -50,28 +52,37 @@ jobs:
     - name: Terraform plan 
       id: plan 
       run: |
-          plan=$(terraform plan -no-color)
-          echo $plan
-          plan="${plan//'%'/'%25'}"
-          plan="${plan//$'\n'/'%0A'}"
-          plan="${plan//$'\r'/'%0D'}"
-          echo "::set-output name=terraform-plan::$plan"
+        plan=$(terraform plan -no-color)
+        echo $plan
+        plan="${plan//'%'/'%25'}"
+        plan="${plan//$'\n'/'%0A'}"
+        plan="${plan//$'\r'/'%0D'}"
+        echo "::set-output name=terraform-plan::$plan"
       continue-on-error: true
     - name: Update Pull Request
-      uses: actions/github-script@0.9.0
+      uses: actions/github-script@0.9.0 
       env:
-          PLAN: "\n```\nterraform\n${{ steps.plan.outputs.terraform-plan }}\n```\n"
+        PLAN: "\n```\nterraform\n${{ steps.plan.outputs.terraform-plan }}\n```\n"
       with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const output = `### MSK Cluster Terraform
-            #### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
-            #### Terraform Linting 🔧\`${{ steps.lint.outcome }}\`
-            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
-            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
-            <details><summary>Show Plan</summary>
-            ${process.env.PLAN}
-            </details>
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const output = `### Terraform Infrastructure auto-generated comment
+          #### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+          #### Terraform Linting 🔧\`${{ steps.lint.outcome }}\`
+          #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+          #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+          <details><summary>Show Plan</summary>
+          ${process.env.PLAN}
+          </details>
+
+          *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+          github.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: output
+          })
     - name: Terraform Status
       if: steps.fmt.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.init.outcome == 'failure' || steps.plan.outcome == 'failure'
       run: exit 1

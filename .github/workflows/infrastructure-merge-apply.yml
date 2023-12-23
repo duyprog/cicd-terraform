@@ -1,0 +1,52 @@
+name: infrastructure-merge-apply
+permissions: 
+  id-token: write
+  contents: read 
+  issues: write
+on:
+  push: 
+    branches: 
+    - master
+    paths:
+    - infrastructure/** 
+env: 
+  AWS_REGION: ap-southeast-1
+jobs: 
+  terraform_apply: 
+    defaults:
+      run: 
+        working-directory: infrastructure
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: actions/checkout@v4
+      - name: Config AWS Credentials 
+        uses: aws-actions/configure-aws-credentials@v3
+        with: 
+          role-to-assume: arn:aws:iam::099608707772:role/oidc-ga-Role-ii6EUkVVzokD
+          role-session-name: terraform
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Install Terraform 
+        run: |
+          wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+          sudo apt update -y && sudo apt install terraform -y    
+      - name: Install tflint 
+        run: |
+          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+      - name: Verify Terraform version 
+        run: terraform --version 
+      - name: Terraform init 
+        id: init
+        run: terraform init -input=false
+        continue-on-error: true 
+      - name: Terraform plan
+        id: plan 
+        run: terraform plan -no-color 
+        continue-on-error: true 
+      - name: Terraform apply
+        id: apply 
+        run: terraform apply -auto-approve
+        continue-on-error: true 
+      - name: Terraform Status
+        if: steps.init.outcome == 'failure' || steps.plan.outcome == 'failure' || steps.init.outcome == 'failure' || steps.apply.outcome == 'failure'
+        run: exit 1
