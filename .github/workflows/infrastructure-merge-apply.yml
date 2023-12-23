@@ -48,5 +48,5 @@ jobs:
         run: terraform apply -auto-approve
         continue-on-error: true 
       - name: Terraform Status
-        if: steps.init.outcome == 'failure' || steps.plan.outcome == 'failure' || steps.init.outcome == 'failure' || steps.apply.outcome == 'failure'
+        if: steps.plan.outcome == 'failure' || steps.init.outcome == 'failure' || steps.apply.outcome == 'failure'
         run: exit 1
