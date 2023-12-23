@@ -60,7 +60,7 @@ resource "aws_subnet" "public_subnets" {
 
 resource "aws_route_table_association" "public_route_table_association" {
   count          = 1
-  route_table_id = aws_route_table.public_route_table[count.index].id
+  route_table_id = aws_route_table.public_route_table.id
   subnet_id      = aws_subnet.public_subnets[count.index].id
 }
 # Security Groups
