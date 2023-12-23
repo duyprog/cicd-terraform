@@ -1,4 +1,4 @@
-name: infrastructure_pull
+name: infrastructure-pull
 permissions: 
   id-token: write
   contents: read
